@@ -9,6 +9,17 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
+# vk-bootstrap: instance / physical device / logical device / swapchain setup.
+# Pinned to v1.3.240 because it still builds against the system's 1.3.204 Vulkan
+# headers; newer tags need newer headers than Ubuntu 22.04 ships.
+include(FetchContent)
+FetchContent_Declare(vk_bootstrap
+    GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap.git
+    GIT_TAG        v1.3.240
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(vk_bootstrap)
+
 find_program(GLSLC glslc HINTS /usr/local/bin)
 if(NOT GLSLC)
     message(FATAL_ERROR "glslc not found. Install the Vulkan SDK / shaderc.")
@@ -48,6 +59,7 @@ target_link_libraries(VulkanEngine PRIVATE
     Vulkan::Vulkan
     glfw
     glm::glm
+    vk-bootstrap::vk-bootstrap
 )
 
 # Keep the binary at the project root so the relative "./shaders/..."
