@@ -27,20 +27,20 @@ endif()
 
 # --- Source discovery --------------------------------------------------
 # CONFIGURE_DEPENDS re-runs this glob before every build, so a new .cpp
-# (in src/ or any new subdirectory under it, e.g. src/systems) gets added
+# (in core/ or any new subdirectory under it, e.g. core/systems) gets added
 # automatically on the next build without touching this file.
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/core/*.cpp
 )
 
 add_executable(VulkanEngine ${ENGINE_SOURCES})
 
-# Every directory under src/ that holds a header is added as an include
+# Every directory under core/ that holds a header is added as an include
 # path, so quoted includes like "SimpleRenderSystem.hpp" keep resolving
 # no matter which subfolder the header lives in.
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/src/*.hpp
-    ${CMAKE_SOURCE_DIR}/src/*.h
+    ${CMAKE_SOURCE_DIR}/core/*.hpp
+    ${CMAKE_SOURCE_DIR}/core/*.h
 )
 set(ENGINE_INCLUDE_DIRS "")
 foreach(HEADER ${ENGINE_HEADERS})
@@ -50,7 +50,7 @@ endforeach()
 list(REMOVE_DUPLICATES ENGINE_INCLUDE_DIRS)
 
 target_include_directories(VulkanEngine PRIVATE
-    src
+    core
     ${ENGINE_INCLUDE_DIRS}
     libs/tinyobjloader
 )
