@@ -1,0 +1,45 @@
+# --- Build output ---------------------------------------------------------
+build/
+out/
+models/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+
+# Executable is written to the project root (see RUNTIME_OUTPUT_DIRECTORY)
+/VulkanEngine
+/a.out
+/run.sh
+
+# Compiled SPIR-V shaders (regenerated from .vert/.frag by CMake)
+shaders/*.spv
+
+# Object files / libraries
+*.o
+*.obj
+*.a
+*.so
+
+# Logs / captured build output
+out.txt
+*.log
+
+# --- LaTeX intermediates (docs/) -------------------------------------------
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.toc
+docs/*.fls
+docs/*.fdb_latexmk
+docs/*.synctex.gz
+
+# --- Editor / tool local settings -----------------------------------------
+.vscode/*
+!.vscode/settings.json
+.idea/
+.claude/*
+.cache/
+*.swp
+*~
+.DS_Store

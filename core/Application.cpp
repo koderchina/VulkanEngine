@@ -36,23 +36,32 @@ namespace Engine
 
     void Application::loadGameObjects()
     {
-        auto flatVase = GameObject::createGameObject();
-        flatVase.model = Model::createModelFromFile(device, "models/flat_vase.obj");
-        flatVase.transform.translation = {-0.5f, 0.5f, 0.0f};
-        flatVase.transform.scale = {3.0f, 1.5f, 3.0f};
-        gameObjects.emplace(flatVase.getId(), std::move(flatVase));
+        // auto alfa = GameObject::createGameObject();
+        // alfa.model = Model::createModelFromFile(device, "models/alfa147.obj");
+        // alfa.transform.translation = {-0.5f, 0.5f, 0.0f};
+        // alfa.transform.rotation = {glm::radians(90.0f), 0.0f, glm::radians(90.0f)};
+        // alfa.transform.scale = {0.01f, 0.01f, 0.01f};
+        // gameObjects.emplace(alfa.getId(), std::move(alfa));
 
-        auto smoothVase = GameObject::createGameObject();
-        smoothVase.model = Model::createModelFromFile(device, "models/smooth_vase.obj");
-        smoothVase.transform.translation = {0.5f, 0.5f, 0.0f};
-        smoothVase.transform.scale = {3.0f, 1.5f, 3.0f};
-        gameObjects.emplace(smoothVase.getId(), std::move(smoothVase));
+        // auto cessna = GameObject::createGameObject();
+        // cessna.model = Model::createModelFromFile(device, "models/cessna.obj");
+        // cessna.transform.translation = {-0.5f, -1.0f, 2.0f};
+        // cessna.transform.rotation = {0.0f, 0.0f, glm::radians(180.0f)};
+        // cessna.transform.scale = {0.1f, 0.1f, 0.1f};
+        // gameObjects.emplace(cessna.getId(), std::move(cessna));
 
-        auto floor = GameObject::createGameObject();
-        floor.model = Model::createModelFromFile(device, "models/quad.obj");
-        floor.transform.translation = {0.0f, 0.5f, 0.0f};
-        floor.transform.scale = {5.0f, 1.0f, 5.0f};
-        gameObjects.emplace(floor.getId(), std::move(floor));
+        // auto floor = GameObject::createGameObject();
+        // floor.model = Model::createModelFromFile(device, "models/quad.obj");
+        // floor.transform.translation = {0.0f, 0.5f, 0.0f};
+        // floor.transform.scale = {5.0f, 1.0f, 5.0f};
+        // gameObjects.emplace(floor.getId(), std::move(floor));
+
+        auto sponza = GameObject::createGameObject();
+        sponza.model = Model::createModelFromFile(device, "models/sponza/sponza.obj");
+        sponza.transform.translation = {-0.5f, 0.0f, -1.0f};
+        sponza.transform.rotation = {glm::radians(180.0f), 0.0f, 0.0f};
+        sponza.transform.scale = {0.01f, 0.01f, 0.01f};
+        gameObjects.emplace(sponza.getId(), std::move(sponza));
 
          std::vector<glm::vec3> lightColors
          {
@@ -113,6 +122,8 @@ namespace Engine
         // This game object has no model and isn't rendered
         // It just stores the camera state
         auto viewerObject = GameObject::createGameObject();
+        viewerObject.transform.translation = {-4.0f, -1.0f, -1.0f};
+        viewerObject.transform.rotation = {0.0f, glm::radians(90.0f), 0.0f};
         KeyboardController cameraController{};
         MouseController cameraMouse{window.getWindowPtr()};
         

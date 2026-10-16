@@ -77,7 +77,7 @@ namespace Engine
             vertexSize,
             vertexCount,
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT // This is GPU VRAM.
         );
 
         // Sends a command to the GPU to copy the contents of the staing buffer
