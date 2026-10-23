@@ -22,11 +22,16 @@ namespace Engine
 {
     Application::Application()
     {
-        globalPool = DescriptorPool::Builder(device)
-            .setMaxSets(SwapChain::MAX_FRAMES_IN_FLIGHT)
-            .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::MAX_FRAMES_IN_FLIGHT)
-            .build();
         loadGameObjects();
+
+        // Populates the texture index
+        loadTextures();
+
+        globalPool = DescriptorPool::Builder(device)
+            .setMaxSets(SwapChain::MAX_FRAMES_IN_FLIGHT + static_cast<uint32_t>(textureIndex.size()))
+            .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::MAX_FRAMES_IN_FLIGHT)
+            .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(textureIndex.size()))
+            .build();
     }
 
     Application::~Application()
@@ -36,26 +41,6 @@ namespace Engine
 
     void Application::loadGameObjects()
     {
-        // auto alfa = GameObject::createGameObject();
-        // alfa.model = Model::createModelFromFile(device, "models/alfa147.obj");
-        // alfa.transform.translation = {-0.5f, 0.5f, 0.0f};
-        // alfa.transform.rotation = {glm::radians(90.0f), 0.0f, glm::radians(90.0f)};
-        // alfa.transform.scale = {0.01f, 0.01f, 0.01f};
-        // gameObjects.emplace(alfa.getId(), std::move(alfa));
-
-        // auto cessna = GameObject::createGameObject();
-        // cessna.model = Model::createModelFromFile(device, "models/cessna.obj");
-        // cessna.transform.translation = {-0.5f, -1.0f, 2.0f};
-        // cessna.transform.rotation = {0.0f, 0.0f, glm::radians(180.0f)};
-        // cessna.transform.scale = {0.1f, 0.1f, 0.1f};
-        // gameObjects.emplace(cessna.getId(), std::move(cessna));
-
-        // auto floor = GameObject::createGameObject();
-        // floor.model = Model::createModelFromFile(device, "models/quad.obj");
-        // floor.transform.translation = {0.0f, 0.5f, 0.0f};
-        // floor.transform.scale = {5.0f, 1.0f, 5.0f};
-        // gameObjects.emplace(floor.getId(), std::move(floor));
-
         auto sponza = GameObject::createGameObject();
         sponza.model = Model::createModelFromFile(device, "models/sponza/sponza.obj");
         sponza.transform.translation = {-0.5f, 0.0f, -1.0f};
@@ -85,6 +70,41 @@ namespace Engine
         std::cout << "Loaded " << gameObjects.size() << " game objects.\n";
     }
 
+    void Application::loadTextures()
+    {
+        textureIndex[""] = Image::createSolidColor(device);
+
+        for (auto &[id, obj] : gameObjects)
+        {
+            if (!obj.model)
+            {
+                // Game object is not a mesh, continue.
+                continue;
+            }
+            
+            for (auto &submesh : obj.model->getSubmheshes())
+            {
+                const std::string &path = submesh.texPath;
+                if (textureIndex.count(path))
+                {
+                    // Texture already loaded, continue.
+                    continue;
+                }
+
+                auto image = Image::createImageFromFile(device, path);
+                if (image != nullptr)
+                {
+                    textureIndex[path] = std::move(image);
+                }
+                else
+                {
+                    textureIndex[path] = Image::createSolidColor(device);
+                }
+            }
+        }
+
+        std::cout << "Loaded " << textureIndex.size() << " unique textures.\n";
+    }
 
     void Application::run()
     {
@@ -106,6 +126,26 @@ namespace Engine
             .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
             .build();
 
+        auto materialSetLayout = DescriptorSetLayout::Builder(device)
+            .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .build();
+
+        for (auto &[path, image] : textureIndex)
+        {
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.imageLayout = image->getLayout();
+            imageInfo.imageView = image->getView();
+            imageInfo.sampler = image->getSampler();
+
+            VkDescriptorSet set;
+            DescriptorWriter(*materialSetLayout, *globalPool).writeImage(0, &imageInfo).build(set);
+            materialDescriptorSets[path] = set;
+        }
+
+        VkDescriptorImageInfo descriptorImageInfo{};
+        descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        // descriptorImageInfo.imageView = 
+
         std::vector<VkDescriptorSet> globalDescriptorSets(SwapChain::MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < globalDescriptorSets.size(); ++i)
         {
@@ -115,7 +155,9 @@ namespace Engine
                 .build(globalDescriptorSets[i]);
         }
 
-        SolidRenderSystem solidRenderSystem{device, renderer.getRenderPass(), globalSetLayout->getDescriptorSetLayout()};
+        std::vector<VkDescriptorSetLayout> layoutDescriptions{globalSetLayout->getDescriptorSetLayout(), materialSetLayout->getDescriptorSetLayout()};
+
+        SolidRenderSystem solidRenderSystem{device, renderer.getRenderPass(), layoutDescriptions};
         PointLightRenderSystem pointLightRenderSystem{device, renderer.getRenderPass(), globalSetLayout->getDescriptorSetLayout()};
         Camera camera{};
 
@@ -145,6 +187,7 @@ namespace Engine
             camera.setPerspectiveProjection(glm::radians(60.0f), aspect, 0.1f, 100.0f);
             cameraController.moveInPlaneXZ(window.getWindowPtr(), frameTime, viewerObject);
             cameraMouse.move(frameTime, viewerObject);
+            std::cout << viewerObject.transform.translation.x << " " << viewerObject.transform.translation.y << " " << viewerObject.transform.translation.z << "\n";
             camera.setViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
 
             auto commandBuffer = renderer.beginFrame();
@@ -157,7 +200,8 @@ namespace Engine
                     commandBuffer,
                     camera,
                     globalDescriptorSets[frameIndex],
-                    gameObjects
+                    gameObjects,
+                    materialDescriptorSets
                 };
 
                 // Update objects in memory

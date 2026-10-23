@@ -347,4 +347,12 @@ void Device::createImageWithInfo(const VkImageCreateInfo &imageInfo,
   }
 }
 
+void Device::createSampler(const VkSamplerCreateInfo samplerInfo, VkSampler &sampler)
+{
+  if (vkCreateSampler(device_, &samplerInfo, nullptr, &sampler))
+  {
+    throw std::runtime_error("Failed to create image sampler!");
+  }
+}
+
 } // namespace Engine

@@ -53,6 +53,7 @@ target_include_directories(VulkanEngine PRIVATE
     core
     ${ENGINE_INCLUDE_DIRS}
     libs/tinyobjloader
+    libs/stb_image
 )
 
 target_link_libraries(VulkanEngine PRIVATE

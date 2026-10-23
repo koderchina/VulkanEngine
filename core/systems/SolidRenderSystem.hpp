@@ -31,7 +31,7 @@ namespace Engine
          * @param renderPass Render pass the pipeline will be compatible with.
          * @param globalSetLayout Layout of the global (binding-0 uniform buffer) descriptor set, included in the pipeline layout.
          */
-        SolidRenderSystem(Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
+        SolidRenderSystem(Device &device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> &layouts);
         /// Calls vkDestroyPipelineLayout() (the Pipeline member destroys the VkPipeline itself).
         ~SolidRenderSystem();
 
@@ -42,7 +42,7 @@ namespace Engine
         void renderGameObjects(FrameInfo &frameInfo);
     private:
         /// Calls vkCreatePipelineLayout() with globalSetLayout plus a push-constant range sized for SimplePushConstantData.
-        void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
+        void createPipelineLayout(std::vector<VkDescriptorSetLayout> &layouts);
         /// Builds a default PipelineConfigInfo and constructs the Pipeline from the simple-shader vert/frag pair.
         void createPipeline(VkRenderPass renderPass);
 

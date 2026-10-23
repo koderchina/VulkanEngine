@@ -5,6 +5,9 @@
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
+#include <map>
+#include <algorithm>
+#include <filesystem>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
@@ -27,8 +30,8 @@ namespace std
 }
 namespace Engine
 {
-    Model::Model(Device &device, const Model::Builder &vertices) 
-        : device{device}
+    Model::Model(Device &device, const Model::Builder &vertices)
+        : device{device}, submeshes{vertices.submeshes}
     {
         createVertexBuffers(vertices.vertices);
         createIndexBuffers(vertices.indices);
@@ -123,6 +126,14 @@ namespace Engine
         }
     }
 
+    void Model::drawSubmesh(VkCommandBuffer commandBuffer, Submesh &submesh)
+    {
+        if (hasIndexBuffer)
+        {
+            vkCmdDrawIndexed(commandBuffer, submesh.indexCount, 1, submesh.firstIndex, 0, 0);
+        }
+    }
+
     /***
      * When the command is executed, primitives are assembled using the current primitive topology and
      * vertexCount consecutive vertex indices with the first vertexIndex value equal to firstVertex. 
@@ -186,60 +197,96 @@ namespace Engine
         std::string warn;
         std::string err;
 
-        if(!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str()))
+        std::string baseDir = std::filesystem::path(path).parent_path().string() + "/";
+        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str(), baseDir.c_str()))
         {
             throw std::runtime_error(warn + err);
         }
 
         vertices.clear();
         indices.clear();
+        submeshes.clear();
 
         std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
+        // This map binds materialId to the index subvector of the loaded mesh.
+        std::map<int, std::vector<uint32_t>> indicesByMaterial{};
+
         for (const auto& shape : shapes)
         {
-            for(const auto& index : shape.mesh.indices)
+            for (size_t f = 0; f < shape.mesh.material_ids.size(); ++f)
             {
-                Vertex vertex{};
-                if(index.vertex_index >= 0)
+                int materialId = shape.mesh.material_ids[f];
+                for (int v = 0; v < 3; ++v)
                 {
-                    vertex.position = {
-                        attrib.vertices[3 * index.vertex_index + 0],
-                        attrib.vertices[3 * index.vertex_index + 1],
-                        attrib.vertices[3 * index.vertex_index + 2],
-                    };
+                    const auto &index = shape.mesh.indices[3 * f + v];
+                    Vertex vertex{};
+                    if(index.vertex_index >= 0)
+                    {
+                        vertex.position = {
+                            attrib.vertices[3 * index.vertex_index + 0],
+                            attrib.vertices[3 * index.vertex_index + 1],
+                            attrib.vertices[3 * index.vertex_index + 2],
+                        };
 
-                    vertex.color = {
-                        attrib.colors[3 * index.vertex_index + 0],
-                        attrib.colors[3 * index.vertex_index + 1],
-                        attrib.colors[3 * index.vertex_index + 2],
-                    };
-                }
+                        vertex.color = {
+                            attrib.colors[3 * index.vertex_index + 0],
+                            attrib.colors[3 * index.vertex_index + 1],
+                            attrib.colors[3 * index.vertex_index + 2],
+                        };
+                    }
 
-                if(index.normal_index >= 0)
-                {
-                    vertex.normal = {
-                        attrib.normals[3 * index.normal_index + 0],
-                        attrib.normals[3 * index.normal_index + 1],
-                        attrib.normals[3 * index.normal_index + 2],
-                    };
-                }
+                    if(index.normal_index >= 0)
+                    {
+                        vertex.normal = {
+                            attrib.normals[3 * index.normal_index + 0],
+                            attrib.normals[3 * index.normal_index + 1],
+                            attrib.normals[3 * index.normal_index + 2],
+                        };
+                    }
 
-                if(index.texcoord_index >= 0)
-                {
-                    vertex.uv = {
-                        attrib.texcoords[2 * index.texcoord_index + 0],
-                        attrib.texcoords[2 * index.texcoord_index + 1]
-                    };
-                }
+                    if(index.texcoord_index >= 0)
+                    {
+                        vertex.uv = {
+                            attrib.texcoords[2 * index.texcoord_index + 0],
+                            attrib.texcoords[2 * index.texcoord_index + 1]
+                        };
+                    }
 
-                if(uniqueVertices.count(vertex) == 0)
-                {
-                    uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-                    vertices.push_back(vertex);
+                    if(uniqueVertices.count(vertex) == 0)
+                    {
+                        uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+                        vertices.push_back(vertex);
+                    }
+                    indicesByMaterial[materialId].push_back(uniqueVertices[vertex]);
                 }
-                indices.push_back(uniqueVertices[vertex]);
             }
         }
 
+        // Flatten the per-material buckets into one index buffer, recording
+        // a Submesh range per bucket. `materialId`/`matIndices` here are new
+        // names bound to each map entry's key/value - unrelated to the
+        // `materialId` declared inside the loop above, whose scope already ended.
+        for (auto &[materialId, matIndices] : indicesByMaterial)
+        {
+            Submesh submesh{};
+            submesh.firstIndex = static_cast<uint32_t>(indices.size());
+            submesh.indexCount = static_cast<uint32_t>(matIndices.size());
+
+            if (materialId >= 0 && !materials[materialId].diffuse_texname.empty())
+            {
+                std::string texName = materials[materialId].diffuse_texname;
+                std::replace(texName.begin(), texName.end(), '\\', '/');
+                submesh.texPath = baseDir + texName;
+            }
+
+            indices.insert(indices.end(), matIndices.begin(), matIndices.end());
+            submeshes.push_back(submesh);
+        }
+
+        std::cout << "Loaded " << vertices.size() << " vertices, "
+                   << indices.size() << " indices, "
+                   << materials.size() << " materials ("
+                   << submeshes.size() << " submeshes) from " << path << std::endl;
     }
 }

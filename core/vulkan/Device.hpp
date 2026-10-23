@@ -148,6 +148,8 @@ public:
   void createImageWithInfo(const VkImageCreateInfo &imageInfo,
                            VkMemoryPropertyFlags properties, VkImage &image,
                            VkDeviceMemory &imageMemory);
+  
+  void createSampler(const VkSamplerCreateInfo samplerInfo, VkSampler &sampler);
 
   /// Physical device properties (vkGetPhysicalDeviceProperties), e.g. limits.minUniformBufferOffsetAlignment.
   VkPhysicalDeviceProperties properties;

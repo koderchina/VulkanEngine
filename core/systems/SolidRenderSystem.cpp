@@ -13,10 +13,10 @@ namespace Engine
         glm::mat4 normalMatrix{1.0f};
     };
 
-    SolidRenderSystem::SolidRenderSystem(Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout) 
+    SolidRenderSystem::SolidRenderSystem(Device &device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> &layouts) 
         : device{device}
     {
-        createPipelineLayout(globalSetLayout);
+        createPipelineLayout(layouts);
         createPipeline(renderPass);
     }
 
@@ -25,18 +25,16 @@ namespace Engine
         vkDestroyPipelineLayout(device.device(), pipelineLayout, nullptr);
     }
 
-    void SolidRenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout)
+    void SolidRenderSystem::createPipelineLayout(std::vector<VkDescriptorSetLayout> &layouts)
     {
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.size = sizeof(SimplePushConstantData);
 
-        std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
-
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
-        pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+        pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
+        pipelineLayoutInfo.pSetLayouts = layouts.data();
         pipelineLayoutInfo.pushConstantRangeCount = 1;
         pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
@@ -99,7 +97,26 @@ namespace Engine
             );
 
             obj.model->bind(frameInfo.commandBuffer);
-            obj.model->draw(frameInfo.commandBuffer);
+            // obj.model->draw(frameInfo.commandBuffer);
+
+            for (auto submesh : obj.model->getSubmheshes())
+            {
+                if (frameInfo.materialDescriptorSets.count(submesh.texPath))
+                {
+                    auto &set = frameInfo.materialDescriptorSets[submesh.texPath];
+                    vkCmdBindDescriptorSets(
+                        frameInfo.commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipelineLayout,
+                        1, 1,
+                        &set,
+                        0,
+                        nullptr
+                    );
+                }
+
+                obj.model->drawSubmesh(frameInfo.commandBuffer, submesh);
+            }
         }
     }
 }

@@ -4,9 +4,11 @@
 #include "Device.hpp"
 #include "Renderer.hpp"
 #include "GameObject.hpp"
+#include "Image.hpp"
 #include "Descriptors.hpp"
 // std
 #include <vector>
+#include <unordered_map>
 
 namespace Engine
 {
@@ -21,8 +23,8 @@ namespace Engine
     class Application
     {
     public:
-        static constexpr int16_t WIDTH = 1920;
-        static constexpr int16_t HEIGHT = 1080;
+        static constexpr int16_t WIDTH = 1280;
+        static constexpr int16_t HEIGHT = 720;
         /// Builds the global DescriptorPool and calls loadGameObjects() to populate the scene.
         Application();
         ~Application();
@@ -33,20 +35,23 @@ namespace Engine
         /// Creates the per-frame uniform buffers/descriptor sets and render systems, then runs the main loop (poll input -> update camera -> Renderer::beginFrame()/beginRenderPass() -> render systems -> endRenderPass()/endFrame()) until the window is closed, finishing with vkDeviceWaitIdle().
         void run();
     private:
-        /// Recursively subdivides a triangle into a Sierpinski fractal, appending generated vertices (unused by the current scene, kept from an earlier exercise).
-        void sierpinski(
-            std::vector<Model::Vertex> &vertices,
-            uint32_t depth,
-            glm::vec2 left, glm::vec2 right, glm::vec2 top
-        );
         /// Populates `gameObjects` with the vase/floor models (via Model::createModelFromFile()) and a ring of point lights (via GameObject::makePointLight()).
         void loadGameObjects();
+        void loadTextures();
 
         Window window{WIDTH, HEIGHT, "Vulkan Engine Window"};
         Device device{window};
         Renderer renderer{window, device};
 
         std::unique_ptr<DescriptorPool> globalPool{};
+
+        // Binds texture path to the images in the GPU VRAM
+        std::unordered_map<std::string, std::unique_ptr<Image>> textureIndex{};
+
+        // Binds texture path to the descriptor set for that texture
+        std::unordered_map<std::string, VkDescriptorSet> materialDescriptorSets{};
+        
         GameObject::Map gameObjects;
+
     };
 }

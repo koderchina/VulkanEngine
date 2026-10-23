@@ -47,11 +47,23 @@ namespace Engine
             }
         };
 
+        /***
+         * A texture is owned by a material which binds to a contignous range of indices within a model.
+         * Subset of mesh indices bound to a certain material (texture) is described by a separate descriptor set.
+         */
+        struct Submesh
+        {
+            uint32_t firstIndex;
+            uint32_t indexCount;
+            std::string texPath{};
+        };
+
         /// Accumulates deduplicated vertices/indices for a Model, populated by loadModel().
         struct Builder
         {
             std::vector<Vertex> vertices{};
             std::vector<uint32_t> indices{};
+            std::vector<Submesh> submeshes{};
 
             /**
              * @brief Parses an .obj file with tinyobjloader and deduplicates vertices (via a hash map) into vertices/indices.
@@ -78,6 +90,9 @@ namespace Engine
          * @return A newly constructed Model, ready to bind()/draw().
          */
         static std::unique_ptr<Model> createModelFromFile(Device &device, const std::string &path);
+        
+        const std::vector<Submesh>& getSubmheshes() {return submeshes;}
+        void drawSubmesh(VkCommandBuffer commandBuffer, Submesh &submesh);
 
         /// Calls vkCmdBindVertexBuffers() (and vkCmdBindIndexBuffer() if indexed) on commandBuffer.
         void bind(VkCommandBuffer commandBuffer);
@@ -97,6 +112,8 @@ namespace Engine
 
         std::unique_ptr<Buffer> indexBuffer;
         uint32_t indexCount;
+
+        std::vector<Submesh> submeshes;
         bool hasIndexBuffer = false;
     };
 }

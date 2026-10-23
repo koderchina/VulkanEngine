@@ -48,6 +48,7 @@ namespace Engine
         Camera &camera;
         VkDescriptorSet globalDescriptorSet;
         GameObject::Map &gameObjects;
+        std::unordered_map<std::string, VkDescriptorSet> &materialDescriptorSets;
 
     };
 }

@@ -3,6 +3,7 @@
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragPosWorldSpace;
 layout(location = 2) in vec3 fragNormalWorldSpace;
+layout(location = 3) in vec2 texCoord;
 
 layout(location = 0) out vec4 outColor;
 
@@ -21,6 +22,8 @@ layout(set = 0, binding = 0) uniform GlobalUniformBufferObject
   PointLight pointLights[10];
   int numLights;
 } ubo;
+
+layout(set = 1, binding = 0) uniform sampler2D texSampler;
 
 layout(push_constant) uniform Push 
 {
@@ -61,5 +64,5 @@ void main() {
     specularLight += intensity * blinnTerm;
   }
 
-  outColor = vec4(diffuseLight * fragColor + specularLight * fragColor, 1.0);
+  outColor = texture(texSampler, texCoord) + vec4(diffuseLight * fragColor + specularLight * fragColor, 1.0);
 }
