@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <vulkan/vulkan_core.h>
+#include "VkBootstrap.h"
 
 namespace Engine
 {
@@ -51,7 +52,6 @@ namespace Engine
     {
 
         assert(configInfo.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipeline layout provided in configInfo");
-        assert(configInfo.renderPass != VK_NULL_HANDLE && "Cannot create graphics pipeline: no render pass provided in configInfo");
         auto vertCode = readFile(vertShaderPath);
         auto fragCode = readFile(fragShaderPath);
 
@@ -107,8 +107,7 @@ namespace Engine
         pipelineInfo.pDynamicState = &configInfo.dynamicStateInfo;
 
         pipelineInfo.layout = configInfo.pipelineLayout;
-        pipelineInfo.renderPass = configInfo.renderPass;
-        pipelineInfo.subpass = configInfo.subpass;
+        pipelineInfo.pNext = &configInfo.renderingInfo;
 
         pipelineInfo.basePipelineIndex = -1;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -150,7 +149,7 @@ namespace Engine
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
     }
 
-    void Pipeline::defaultPipelineConfigInfo(PipelineConfigInfo &configInfo)
+    void Pipeline::defaultPipelineConfigInfo(PipelineConfigInfo &configInfo, VkFormat colorFormat, VkFormat depthFormat)
     {
         configInfo.inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         // Tells the input assembler how to treat the incoming data
@@ -230,7 +229,18 @@ namespace Engine
         configInfo.dynamicStateInfo.flags = 0;
 
         configInfo.bindingDescriptions = Model::Vertex::getBindingDescriptions();
-        configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions(); 
+        configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
+
+        configInfo.colorAttachmentFormat = colorFormat;
+
+        configInfo.renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        configInfo.renderingInfo.pNext = nullptr;
+        configInfo.renderingInfo.colorAttachmentCount = 1;
+        configInfo.renderingInfo.pColorAttachmentFormats = &configInfo.colorAttachmentFormat;
+        configInfo.renderingInfo.depthAttachmentFormat = depthFormat;
+        configInfo.renderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+        configInfo.renderingInfo.viewMask = 0;
+
     }
 
     void Pipeline::enableAlphaBlending(PipelineConfigInfo &configInfo)

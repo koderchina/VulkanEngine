@@ -3,6 +3,7 @@
 #include "Camera.hpp"
 #include "systems/SolidRenderSystem.hpp"
 #include "systems/PointLightRenderSystem.hpp"
+#include "passes/ForwardPass.hpp"
 #include "KeyboardController.hpp"
 #include "MouseController.hpp"
 #include "Buffer.hpp"
@@ -18,10 +19,21 @@
 #include <array>
 #include <filesystem>
 
+#include <csignal>
+
 namespace Engine
 {
+    sig_atomic_t sigflag = 0;
+
+    void sighandler(int s)
+    {
+        sigflag = 1;
+    }
+
     Application::Application()
     {
+        std::signal(SIGINT, sighandler);
+
         loadGameObjects();
 
         // Populates the texture index
@@ -157,8 +169,8 @@ namespace Engine
 
         std::vector<VkDescriptorSetLayout> layoutDescriptions{globalSetLayout->getDescriptorSetLayout(), materialSetLayout->getDescriptorSetLayout()};
 
-        SolidRenderSystem solidRenderSystem{device, renderer.getRenderPass(), layoutDescriptions};
-        PointLightRenderSystem pointLightRenderSystem{device, renderer.getRenderPass(), globalSetLayout->getDescriptorSetLayout()};
+        SolidRenderSystem solidRenderSystem{device, renderer.getColorAttachmentFormat(), renderer.getDepthAttachmentFormat(), layoutDescriptions};
+        PointLightRenderSystem pointLightRenderSystem{device, renderer.getColorAttachmentFormat(), renderer.getDepthAttachmentFormat(), globalSetLayout->getDescriptorSetLayout()};
         Camera camera{};
 
         // This game object has no model and isn't rendered
@@ -168,12 +180,30 @@ namespace Engine
         viewerObject.transform.rotation = {0.0f, glm::radians(90.0f), 0.0f};
         KeyboardController cameraController{};
         MouseController cameraMouse{window.getWindowPtr()};
-        
+
+        // Lives for the whole loop so ForwardPass can keep a reference to it; the per-frame
+        // fields are overwritten at the start of every frame.
+        FrameInfo frameInfo{0, 0.0f, VK_NULL_HANDLE, camera, VK_NULL_HANDLE, gameObjects, materialDescriptorSets};
+
+        RenderResource depth{};
+        depth.name = "depth";
+        // Same format the pipelines were built with (VkPipelineRenderingCreateInfo::depthAttachmentFormat).
+        depth.format = renderer.getDepthAttachmentFormat();
+        depth.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        depth.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        // Extent = swap chain extent, and resized together with the swap chain.
+        renderer.addScreenSizedResource(depth);
+
+        auto& graph = renderer.getGraph();
+        graph.addPass(std::make_unique<ForwardPass>(frameInfo, solidRenderSystem, pointLightRenderSystem));
+        // Orders the passes and allocates "depth" (vkCreateImage/vkAllocateMemory/vkCreateImageView).
+        graph.compile();
+
         auto currentTime = std::chrono::high_resolution_clock::now();
 
         while(!window.shouldClose())
         {
-            if (glfwGetKey(window.getWindowPtr(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            if (glfwGetKey(window.getWindowPtr(), GLFW_KEY_ESCAPE) == GLFW_PRESS || (sigflag != 0))
             {
                 glfwSetWindowShouldClose(window.getWindowPtr(), GLFW_TRUE);
             }
@@ -187,22 +217,17 @@ namespace Engine
             camera.setPerspectiveProjection(glm::radians(60.0f), aspect, 0.1f, 100.0f);
             cameraController.moveInPlaneXZ(window.getWindowPtr(), frameTime, viewerObject);
             cameraMouse.move(frameTime, viewerObject);
-            std::cout << viewerObject.transform.translation.x << " " << viewerObject.transform.translation.y << " " << viewerObject.transform.translation.z << "\n";
+            // std::cout << viewerObject.transform.translation.x << " " << viewerObject.transform.translation.y << " " << viewerObject.transform.translation.z << "\n";
             camera.setViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
 
             auto commandBuffer = renderer.beginFrame();
             if (commandBuffer != nullptr)
             {
                 int frameIndex = renderer.getFrameIndex();
-                FrameInfo frameInfo {
-                    frameIndex,
-                    frameTime,
-                    commandBuffer,
-                    camera,
-                    globalDescriptorSets[frameIndex],
-                    gameObjects,
-                    materialDescriptorSets
-                };
+                frameInfo.FrameIndex = frameIndex;
+                frameInfo.frameTime = frameTime;
+                frameInfo.commandBuffer = commandBuffer;
+                frameInfo.globalDescriptorSet = globalDescriptorSets[frameIndex];
 
                 // Update objects in memory
                 GlobalUniformBufferObject uniformBufferObject{};
@@ -213,15 +238,8 @@ namespace Engine
                 uboBuffers[frameIndex]->writeToBuffer((void *)&uniformBufferObject);
                 uboBuffers[frameIndex]->flush();
 
-                // render
-                renderer.beginRenderPass(commandBuffer);
-
-                // Render solid objects 
-                solidRenderSystem.renderGameObjects(frameInfo);
-                // Render semi-transparent objects
-                pointLightRenderSystem.render(frameInfo);
-                
-                renderer.endRenderPass(commandBuffer);
+                // Barriers + every pass (vkCmdBeginRendering ... draws ... vkCmdEndRendering)
+                renderer.executeRenderGraph(commandBuffer);
                 renderer.endFrame();
             }
         }

@@ -13,11 +13,11 @@ namespace Engine
         glm::mat4 normalMatrix{1.0f};
     };
 
-    SolidRenderSystem::SolidRenderSystem(Device &device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> &layouts) 
+    SolidRenderSystem::SolidRenderSystem(Device &device, VkFormat colorFormat , VkFormat depthFormat, std::vector<VkDescriptorSetLayout> &layouts) 
         : device{device}
     {
         createPipelineLayout(layouts);
-        createPipeline(renderPass);
+        createPipeline(colorFormat, depthFormat);
     }
 
     SolidRenderSystem::~SolidRenderSystem()
@@ -44,13 +44,12 @@ namespace Engine
         }
     }
 
-    void SolidRenderSystem::createPipeline(VkRenderPass renderPass)
+    void SolidRenderSystem::createPipeline(VkFormat colorFormat, VkFormat depthFormat)
     {
         assert(pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout!");
 
         PipelineConfigInfo pipelineConfig{};
-        Pipeline::defaultPipelineConfigInfo(pipelineConfig);
-        pipelineConfig.renderPass = renderPass;
+        Pipeline::defaultPipelineConfigInfo(pipelineConfig, colorFormat, depthFormat);
         pipelineConfig.pipelineLayout = pipelineLayout;
         pipeline = std::make_unique<Pipeline>(
             device, 

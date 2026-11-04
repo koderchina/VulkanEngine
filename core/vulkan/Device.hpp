@@ -149,7 +149,11 @@ public:
                            VkMemoryPropertyFlags properties, VkImage &image,
                            VkDeviceMemory &imageMemory);
   
+  VkImageView createImageViewWithInfo(VkImageViewCreateInfo viewInfo);
+
   void createSampler(const VkSamplerCreateInfo samplerInfo, VkSampler &sampler);
+  
+  VkSemaphore createSemaphore(const VkSemaphoreCreateInfo semInfo);
 
   /// Physical device properties (vkGetPhysicalDeviceProperties), e.g. limits.minUniformBufferOffsetAlignment.
   VkPhysicalDeviceProperties properties;
@@ -170,6 +174,7 @@ private:
   void createCommandPool();
 
   VkInstance instance;
+  uint32_t vkVersion{0};
   VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
   vkb::Device vkbDevice_;

@@ -29,10 +29,11 @@ namespace Engine
         /**
          * @brief Calls createPipelineLayout() then createPipeline().
          * @param device Device the pipeline layout/pipeline are created on.
-         * @param renderPass Render pass the pipeline will be compatible with.
+         * @param colorFormat Swap chain color attachment format the pipeline will be compatible with.
+         * @param depthFormat Swap chain depth attachment format the pipeline will be compatible with.
          * @param globalSetLayout Layout of the global (binding-0 uniform buffer) descriptor set, included in the pipeline layout.
          */
-        PointLightRenderSystem(Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
+        PointLightRenderSystem(Device &device, VkFormat colorFormat, VkFormat depthFormat, VkDescriptorSetLayout globalSetLayout);
         /// Calls vkDestroyPipelineLayout() (the Pipeline member destroys the VkPipeline itself).
         ~PointLightRenderSystem();
 
@@ -47,7 +48,7 @@ namespace Engine
         /// Calls vkCreatePipelineLayout() with globalSetLayout plus a push-constant range sized for PointLightPushConstant.
         void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
         /// Builds a PipelineConfigInfo (default + alpha blending, no vertex input) and constructs the Pipeline from the point-light shaders.
-        void createPipeline(VkRenderPass renderPass);
+        void createPipeline(VkFormat colorFormat, VkFormat depthFormat);
 
         Device &device;
         // This lets us create a new swap chain just by creating a new swapChain object

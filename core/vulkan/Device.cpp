@@ -61,7 +61,7 @@ vkb::Instance Device::createInstance()
       .set_app_version(VK_MAKE_VERSION(1, 0, 0))
       .set_engine_name("No Engine")
       .set_engine_version(VK_MAKE_VERSION(1, 0, 0))
-      .require_api_version(VK_API_VERSION_1_0)
+      .require_api_version(VK_API_VERSION_1_3)
       .enable_validation_layers(enableValidationLayers);
 
   /*
@@ -87,6 +87,16 @@ vkb::Instance Device::createInstance()
   vkb::Instance vkbInstance = result.value();
   instance = vkbInstance.instance;
   debugMessenger = vkbInstance.debug_messenger;
+
+  VkResult res = vkEnumerateInstanceVersion(&vkVersion);
+  if (res == VK_SUCCESS)
+  {
+    std::cout << "Vulkan v." << 
+      VK_API_VERSION_MAJOR(vkVersion) << "." << 
+      VK_API_VERSION_MINOR(vkVersion) << "." << 
+      VK_API_VERSION_PATCH(vkVersion) 
+      << "\n";
+  }
   return vkbInstance;
 }
 
@@ -108,9 +118,13 @@ vkb::PhysicalDevice Device::pickPhysicalDevice(const vkb::Instance &vkbInstance)
   VkPhysicalDeviceFeatures requiredFeatures{};
   requiredFeatures.samplerAnisotropy = VK_TRUE;
 
+  VkPhysicalDeviceVulkan13Features requiredFeatures13{};
+  requiredFeatures13.dynamicRendering = VK_TRUE;
+
   vkb::PhysicalDeviceSelector selector{vkbInstance};
   auto result = selector.set_surface(surface_)
                     .set_required_features(requiredFeatures)
+                    .set_required_features_13(requiredFeatures13)
                     .select();
   if (!result)
   {
@@ -353,6 +367,28 @@ void Device::createSampler(const VkSamplerCreateInfo samplerInfo, VkSampler &sam
   {
     throw std::runtime_error("Failed to create image sampler!");
   }
+}
+
+VkSemaphore Device::createSemaphore(const VkSemaphoreCreateInfo semInfo)
+{
+  VkSemaphore semaphore;
+  if (vkCreateSemaphore(device_, &semInfo, nullptr, &semaphore) != VK_SUCCESS)
+  {
+    throw std::runtime_error("Failed to create semaphore!");
+  }
+
+  return semaphore;
+}
+
+VkImageView Device::createImageViewWithInfo(VkImageViewCreateInfo viewInfo)
+{
+  VkImageView imageView;
+  if (vkCreateImageView(device_, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+  {
+    throw std::runtime_error("Failed to create image view!");
+  }
+
+  return imageView;
 }
 
 } // namespace Engine

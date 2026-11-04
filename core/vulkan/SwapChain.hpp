@@ -11,7 +11,9 @@
 namespace Engine
 {
     /**
-     * @brief Owns the VkSwapchainKHR, its images/views, the depth buffer, the VkRenderPass, framebuffers and per-frame sync objects (semaphores/fences).
+     * @brief Owns the VkSwapchainKHR, its images/views and per-frame sync objects (semaphores/fences).
+     *
+     * The depth buffer is not here: it is a screen-sized RenderGraph resource (see Renderer::addScreenSizedResource()).
      *
      * Everything the renderer needs to acquire an image, render into it and
      * present it lives here. When the window resizes or the swap chain
@@ -26,7 +28,7 @@ namespace Engine
         static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
         /**
-         * @brief Calls init() to build a fresh swap chain, render pass, depth buffer, framebuffers and sync objects.
+         * @brief Calls init() to build a fresh swap chain and sync objects.
          * @param deviceRef Device the swap chain is created on.
          * @param windowExtent Desired swap chain extent (usually the window's framebuffer size).
          */
@@ -38,16 +40,14 @@ namespace Engine
          * @param previous The swap chain being replaced (e.g. after a window resize).
          */
         SwapChain(Device &deviceRef, VkExtent2D windowExtent, std::shared_ptr<SwapChain> previous);
-        /// Destroys image views, the swap chain, depth images/views/memory, framebuffers, the render pass and the sync objects, in that order.
+        /// Destroys image views, the swap chain and the sync objects, in that order.
         ~SwapChain();
 
         SwapChain(const SwapChain &) = delete;
         SwapChain& operator=(const SwapChain &) = delete;
 
-        /// @return The VkFramebuffer for swap chain image `index`.
-        VkFramebuffer getFrameBuffer(int index) { return swapChainFrameBuffers[index]; }
-        /// @return The VkRenderPass all framebuffers were created against.
-        VkRenderPass getRenderPass() { return renderPass; }
+        /// @return The VkImage for swap chain image `index`.
+        VkImage getImage(int index) {return swapChainImages[index]; }
         /// @return The VkImageView for swap chain image `index`.
         VkImageView getImageView(int index) { return swapChainImageViews[index]; }
         /// @return Number of images in the swap chain.
@@ -82,40 +82,23 @@ namespace Engine
          */
         VkResult submitCommandBuffers(const VkCommandBuffer *buffers, uint32_t *imageIndex);
 
-        /// @return true if `swapChain`'s depth/color formats match this swap chain's (used to detect a format change across a swap chain recreation).
+        /// @return true if `swapChain`'s color format matches this swap chain's (used to detect a format change across a swap chain recreation).
+        /// The depth format isn't compared: it comes from the device (findDepthFormat()), so recreating the swap chain can't change it.
         bool compareSwapFormats(const SwapChain &swapChain) const
         {
-            return swapChain.swapChainDepthFormat == swapChainDepthFormat &&
-                    swapChain.swapChainImageFormat == swapChainImageFormat;
+            return swapChain.swapChainImageFormat == swapChainImageFormat;
         }
 
     private:
-        /// Runs the full creation sequence: createSwapChain(), createDepthResources(), createRenderPass(), createFrameBuffers(), createSyncObjects().
+        /// Runs the full creation sequence: createSwapChain(), createSyncObjects().
         void init();
         void createSwapChain();     // vkCreateSwapchainKHR + image views (vkb::SwapchainBuilder)
-        /// For each swap chain image, calls Device::createImageWithInfo() to allocate a depth VkImage and vkCreateImageView() for it.
-        void createDepthResources();
-        /// Builds the single color+depth subpass and calls vkCreateRenderPass().
-        void createRenderPass();
-        /// Calls vkCreateFramebuffer() once per swap chain image, each combining that image's color view with its depth view.
-        void createFrameBuffers();
         /// Calls vkCreateSemaphore() (image-available, render-finished) and vkCreateFence() (in-flight) for each frame-in-flight.
         void createSyncObjects();
 
         VkFormat swapChainImageFormat;
-        VkFormat swapChainDepthFormat;
         VkExtent2D swapChainExtent;
 
-        std::vector<VkFramebuffer> swapChainFrameBuffers;
-        /**
-         * A render pass describes the structure of rendering operation like
-         * attachments (color/depth/stencil), how the attachments are loaded and stored etc.
-         */
-        VkRenderPass renderPass;
-
-        std::vector<VkImage> depthImages;
-        std::vector<VkDeviceMemory> depthImageMemories;
-        std::vector<VkImageView> depthImageViews;
         std::vector<VkImage> swapChainImages;
         std::vector<VkImageView> swapChainImageViews;
 

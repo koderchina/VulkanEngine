@@ -284,7 +284,7 @@ namespace Engine
             submeshes.push_back(submesh);
         }
 
-        std::cout << "Loaded " << vertices.size() << " vertices, "
+        std::cout << "Loaded " << path << ": " << vertices.size() << " vertices, "
                    << indices.size() << " indices, "
                    << materials.size() << " materials ("
                    << submeshes.size() << " submeshes) from " << path << std::endl;

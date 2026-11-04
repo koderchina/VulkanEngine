@@ -28,10 +28,16 @@ namespace Engine
         /**
          * @brief Calls createPipelineLayout() then createPipeline().
          * @param device Device the pipeline layout/pipeline are created on.
-         * @param renderPass Render pass the pipeline will be compatible with.
-         * @param globalSetLayout Layout of the global (binding-0 uniform buffer) descriptor set, included in the pipeline layout.
+         * @param colorFormat Swap chain color attachment format the pipeline will be compatible with.
+         * @param depthFormat Swap chain depth attachment format the pipeline will be compatible with.
+         * @param layouts Descriptor set layouts included in the pipeline layout.
          */
-        SolidRenderSystem(Device &device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> &layouts);
+        SolidRenderSystem(
+            Device &device,
+            VkFormat colorFormat, 
+            VkFormat depthFormat, 
+            std::vector<VkDescriptorSetLayout> &layouts
+        );
         /// Calls vkDestroyPipelineLayout() (the Pipeline member destroys the VkPipeline itself).
         ~SolidRenderSystem();
 
@@ -44,7 +50,7 @@ namespace Engine
         /// Calls vkCreatePipelineLayout() with globalSetLayout plus a push-constant range sized for SimplePushConstantData.
         void createPipelineLayout(std::vector<VkDescriptorSetLayout> &layouts);
         /// Builds a default PipelineConfigInfo and constructs the Pipeline from the simple-shader vert/frag pair.
-        void createPipeline(VkRenderPass renderPass);
+        void createPipeline(VkFormat colorFormat, VkFormat depthFormat);
 
         Device &device;
         // This lets us create a new swap chain just by creating a new swapChain object

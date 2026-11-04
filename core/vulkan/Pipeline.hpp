@@ -59,8 +59,12 @@ namespace Engine
         VkPipelineDepthStencilStateCreateInfo   depthStencilInfo;
 
         VkPipelineLayout                        pipelineLayout;
-        VkRenderPass                            renderPass;
-        uint32_t                                subpass = 0;
+
+        /**
+         * Dynamic rendering deprecates renderpasses.
+         */
+        VkFormat colorAttachmentFormat{VK_FORMAT_UNDEFINED};
+        VkPipelineRenderingCreateInfoKHR renderingInfo{};
 
         std::vector<VkDynamicState> dynamicStateEnables;
         VkPipelineDynamicStateCreateInfo dynamicStateInfo;
@@ -99,7 +103,7 @@ namespace Engine
         /// Calls vkCmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS) so subsequent draws in commandBuffer use this pipeline.
         void bind(VkCommandBuffer commandBuffer);
         /// Fills configInfo with the engine's standard fixed-function state (triangle list, no culling, depth test on, dynamic viewport/scissor, alpha blending off).
-        static void defaultPipelineConfigInfo(PipelineConfigInfo &configInfo);
+        static void defaultPipelineConfigInfo(PipelineConfigInfo &configInfo, VkFormat colorFormat, VkFormat depthFormat);
         /// Switches configInfo's color blend attachment to standard alpha blending (src-alpha, one-minus-src-alpha).
         static void enableAlphaBlending(PipelineConfigInfo &configInfo);
     private:

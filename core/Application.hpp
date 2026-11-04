@@ -32,7 +32,7 @@ namespace Engine
         Application (const Application &) = delete;
         Application& operator=(const Application &) = delete;
 
-        /// Creates the per-frame uniform buffers/descriptor sets and render systems, then runs the main loop (poll input -> update camera -> Renderer::beginFrame()/beginRenderPass() -> render systems -> endRenderPass()/endFrame()) until the window is closed, finishing with vkDeviceWaitIdle().
+        /// Creates the per-frame uniform buffers/descriptor sets and render systems, then runs the main loop (poll input -> update camera -> Renderer::beginFrame() -> executeRenderGraph() -> endFrame()) until the window is closed, finishing with vkDeviceWaitIdle().
         void run();
     private:
         /// Populates `gameObjects` with the vase/floor models (via Model::createModelFromFile()) and a ring of point lights (via GameObject::makePointLight()).

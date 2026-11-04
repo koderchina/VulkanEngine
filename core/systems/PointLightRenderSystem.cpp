@@ -16,11 +16,11 @@ namespace Engine
         float radius;
     };
 
-    PointLightRenderSystem::PointLightRenderSystem(Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout) 
+    PointLightRenderSystem::PointLightRenderSystem(Device &device, VkFormat colorFormat, VkFormat depthFormat, VkDescriptorSetLayout globalSetLayout)
         : device{device}
     {
         createPipelineLayout(globalSetLayout);
-        createPipeline(renderPass);
+        createPipeline(colorFormat, depthFormat);
     }
 
     PointLightRenderSystem::~PointLightRenderSystem()
@@ -50,18 +50,17 @@ namespace Engine
         }
     }
 
-    void PointLightRenderSystem::createPipeline(VkRenderPass renderPass)
+    void PointLightRenderSystem::createPipeline(VkFormat colorFormat, VkFormat depthFormat)
     {
         assert(pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout!");
 
         PipelineConfigInfo pipelineConfig{};
-        Pipeline::defaultPipelineConfigInfo(pipelineConfig);
+        Pipeline::defaultPipelineConfigInfo(pipelineConfig, colorFormat, depthFormat);
         Pipeline::enableAlphaBlending(pipelineConfig);
         // Special case
         pipelineConfig.bindingDescriptions.clear();
         pipelineConfig.attributeDescriptions.clear();
-        
-        pipelineConfig.renderPass = renderPass;
+    
         pipelineConfig.pipelineLayout = pipelineLayout;
         pipeline = std::make_unique<Pipeline>(
             device, 

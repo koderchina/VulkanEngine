@@ -5,6 +5,8 @@ namespace Engine
     Renderer::Renderer(Window &window, Device &device)
         : window{window}, device{device}
     {
+        // Created first: recreateSwapChain() resizes the graph's screen-sized resources.
+        renderGraph = std::make_unique<RenderGraph>(device);
         recreateSwapChain();
         createCommandBuffers();
     }
@@ -38,10 +40,28 @@ namespace Engine
 
             if (!oldSwapChain->compareSwapFormats(*swapChain.get()))
             {
-                throw std::runtime_error("Swap chain image (or depth) format has changed!");
+                throw std::runtime_error("Swap chain image format has changed!");
             }
         }
         currentFrameIndex = 0;
+
+        // Every attachment of a pass must cover its render area, so screen-sized render targets
+        // follow the new swap chain extent. Safe to destroy the old images: vkDeviceWaitIdle() ran above.
+        VkExtent2D swapChainExtent = swapChain->getSwapChainExtent();
+        std::unordered_map<std::string, VkExtent3D> newExtents;
+        for (const auto& name : screenSizedResources)
+        {
+            newExtents[name] = {swapChainExtent.width, swapChainExtent.height, 1};
+        }
+        renderGraph->resizeResources(newExtents);
+    }
+
+    void Renderer::addScreenSizedResource(RenderResource resource)
+    {
+        VkExtent2D swapChainExtent = swapChain->getSwapChainExtent();
+        resource.extent = {swapChainExtent.width, swapChainExtent.height, 1};
+        screenSizedResources.push_back(resource.name);
+        renderGraph->addResource(resource);
     }
 
     void Renderer::createCommandBuffers()
@@ -141,57 +161,22 @@ namespace Engine
         }
     }
 
-    void Renderer::beginRenderPass(VkCommandBuffer commandBuffer)
+    void Renderer::executeRenderGraph(VkCommandBuffer commandBuffer)
     {
-        assert(isFrameStarted == true && "Can't begin render pass while frame not in progress!");
-        assert(commandBuffer == getCurrentCommandBuffer() && "Can't begin render pass on a command buffer from different frame");
+        assert(isFrameStarted && "Can't execute the render graph while frame not in progress");
 
-        // Begin a render pass
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = swapChain->getRenderPass();
-        renderPassInfo.framebuffer = swapChain->getFrameBuffer(currentImageIndex);
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = swapChain->getSwapChainExtent();
+        VkExtent2D currentImageExtent = swapChain->getSwapChainExtent();
+        RenderResource backBuffer{};
+        backBuffer.name = "backbuffer";
+        backBuffer.image = swapChain->getImage(currentImageIndex);
+        backBuffer.imageView = swapChain->getImageView(currentImageIndex);
+        backBuffer.format = swapChain->getSwapChainImageFormat();
+        backBuffer.extent = {currentImageExtent.width, currentImageExtent.height, 1};
+        backBuffer.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        backBuffer.currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        backBuffer.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-        /**
-         * Clear values is an array indexed by attachment index. 
-         * If an attachment uses LOAD_OP_LOAD or DONT_CARE, its corresponding VkClearValue entry is simply unused.
-         */
-        std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = {0.01f, 0.01f, 0.01f, 1.0f};
-        clearValues[1].depthStencil = {1.0f, 0};
-
-        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-        renderPassInfo.pClearValues = clearValues.data();
-
-        // After beginning a render pass instance, the command buffer is ready to 
-        // record the commands for the first subpass of that render pass.
-        // VK_SUBPASS_CONTENTS_INLINE: no secondary command buffer will be used.
-        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        // Configure dynamic viewport and scissor
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        viewport.width = static_cast<uint32_t>(swapChain->getSwapChainExtent().width);
-        viewport.height = static_cast<uint32_t>(swapChain->getSwapChainExtent().height);
-
-        VkRect2D scissor{};
-        scissor.extent = swapChain->getSwapChainExtent();
-        scissor.offset = {0,0};
-
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    }
-
-    void Renderer::endRenderPass(VkCommandBuffer commandBuffer)
-    {
-        assert(isFrameStarted == true && "Can't end render pass while frame not in progress!");
-        assert(commandBuffer == getCurrentCommandBuffer() && "Can't end render pass on a command buffer from different frame");
-
-        vkCmdEndRenderPass(commandBuffer);
+        std::unordered_map<std::string, RenderResource> frameResources {{"backbuffer", backBuffer}};
+        renderGraph->execute(commandBuffer, frameResources);
     }
 }
