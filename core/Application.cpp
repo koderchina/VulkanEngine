@@ -4,6 +4,7 @@
 #include "systems/SolidRenderSystem.hpp"
 #include "systems/PointLightRenderSystem.hpp"
 #include "passes/ForwardPass.hpp"
+#include "passes/SolidPass.hpp"
 #include "KeyboardController.hpp"
 #include "MouseController.hpp"
 #include "Buffer.hpp"
@@ -195,7 +196,8 @@ namespace Engine
         renderer.addScreenSizedResource(depth);
 
         auto& graph = renderer.getGraph();
-        graph.addPass(std::make_unique<ForwardPass>(frameInfo, solidRenderSystem, pointLightRenderSystem));
+        graph.addPass(std::make_unique<SolidPass>(frameInfo, solidRenderSystem));
+        graph.addPass(std::make_unique<ForwardPass>(frameInfo, pointLightRenderSystem));
         // Orders the passes and allocates "depth" (vkCreateImage/vkAllocateMemory/vkCreateImageView).
         graph.compile();
 

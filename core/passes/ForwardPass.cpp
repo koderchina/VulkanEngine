@@ -8,7 +8,7 @@ namespace
         VkRenderingAttachmentInfo attachment{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
         attachment.imageView = view;
         attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         attachment.clearValue.color = clearColor;
         return attachment;
@@ -20,7 +20,7 @@ namespace
         VkRenderingAttachmentInfo attachment{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
         attachment.imageView = view;
         attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         attachment.clearValue.depthStencil = {1.0f, 0};
         return attachment;
@@ -29,9 +29,9 @@ namespace
 
 namespace Engine
 {
-    ForwardPass::ForwardPass(FrameInfo& frameInfo, SolidRenderSystem& solid, PointLightRenderSystem& lights)
+    ForwardPass::ForwardPass(FrameInfo& frameInfo, PointLightRenderSystem& lights)
         : RenderPass("forward", {}, {"backbuffer", "depth"}),
-          frameInfo{frameInfo}, solid{solid}, lights{lights}
+          frameInfo{frameInfo}, lights{lights}
     {
     }
 
@@ -44,10 +44,12 @@ namespace Engine
         VkRenderingAttachmentInfo color = colorAttachment(backbuffer.imageView, {{0.01f, 0.01f, 0.01f, 1.0f}});
         VkRenderingAttachmentInfo depthInfo = depthAttachment(depth.imageView);
 
-        beginDynamicRendering(ctx.commandBuffer, {backbuffer.extent.width, backbuffer.extent.height},
-                              1, &color, &depthInfo);
-        // Render solid objects
-        solid.renderGameObjects(frameInfo);
+        beginDynamicRendering(
+            ctx.commandBuffer, 
+            {backbuffer.extent.width, backbuffer.extent.height},
+            1, &color, &depthInfo
+        );
+        
         // Render semi-transparent objects
         lights.render(frameInfo);
         vkCmdEndRendering(ctx.commandBuffer);

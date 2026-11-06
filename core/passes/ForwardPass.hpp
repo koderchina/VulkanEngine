@@ -16,14 +16,13 @@ namespace Engine
     class ForwardPass : public RenderPass
     {
     public:
-        ForwardPass(FrameInfo& frameInfo, SolidRenderSystem& solid, PointLightRenderSystem& lights);
+        ForwardPass(FrameInfo& frameInfo, PointLightRenderSystem& lights);
 
         /// vkCmdBeginRendering (backbuffer + depth, both cleared) -> solid + point light draws -> vkCmdEndRendering.
         void record(RenderPassContext& ctx) override;
 
     private:
         FrameInfo& frameInfo;
-        SolidRenderSystem& solid;
         PointLightRenderSystem& lights;
     };
 }
