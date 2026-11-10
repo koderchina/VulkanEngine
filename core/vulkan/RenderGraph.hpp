@@ -48,6 +48,8 @@ namespace Engine
         }
 
     private:
+        
+        void notifyResourcesAllocated();
 
         void visitNode(uint32_t node, 
             std::vector<std::vector<uint32_t>> &dependencies,

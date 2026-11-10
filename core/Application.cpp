@@ -4,7 +4,7 @@
 #include "systems/SolidRenderSystem.hpp"
 #include "systems/PointLightRenderSystem.hpp"
 #include "passes/ForwardPass.hpp"
-#include "passes/SolidPass.hpp"
+#include "passes/GBufferPass.hpp"
 #include "KeyboardController.hpp"
 #include "MouseController.hpp"
 #include "Buffer.hpp"
@@ -170,7 +170,7 @@ namespace Engine
 
         std::vector<VkDescriptorSetLayout> layoutDescriptions{globalSetLayout->getDescriptorSetLayout(), materialSetLayout->getDescriptorSetLayout()};
 
-        SolidRenderSystem solidRenderSystem{device, renderer.getColorAttachmentFormat(), renderer.getDepthAttachmentFormat(), layoutDescriptions};
+        // SolidRenderSystem solidRenderSystem{device, renderer.getColorAttachmentFormat(), renderer.getDepthAttachmentFormat(), layoutDescriptions};
         PointLightRenderSystem pointLightRenderSystem{device, renderer.getColorAttachmentFormat(), renderer.getDepthAttachmentFormat(), globalSetLayout->getDescriptorSetLayout()};
         Camera camera{};
 
@@ -195,8 +195,44 @@ namespace Engine
         // Extent = swap chain extent, and resized together with the swap chain.
         renderer.addScreenSizedResource(depth);
 
+        /**
+         * G-Buffer definition:
+         *  - albedo: texture + vertex color
+         *  - normal: world-space normals in xyz
+         *  - position: world-space position in xyz
+         */
+        RenderResource albedo{};
+        albedo.name = "albedo";
+        albedo.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        albedo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        albedo.format = VK_FORMAT_R8G8B8A8_SRGB;
+        renderer.addScreenSizedResource(albedo);
+
+        RenderResource normal{};
+        normal.name = "normal";
+        normal.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        normal.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        normal.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+        renderer.addScreenSizedResource(normal);
+
+        RenderResource position{};
+        position.name = "position";
+        position.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        position.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        position.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+        renderer.addScreenSizedResource(position);
+
+        SolidRenderSystem solidRenderSystem(
+            device, 
+            {albedo.format, normal.format, position.format}, 
+            "shaders/gbuffer.vert.spv", 
+            "shaders/gbuffer.frag.spv", 
+            depth.format,
+            layoutDescriptions
+        );
+
         auto& graph = renderer.getGraph();
-        graph.addPass(std::make_unique<SolidPass>(frameInfo, solidRenderSystem));
+        graph.addPass(std::make_unique<GBufferPass>(frameInfo, solidRenderSystem));
         graph.addPass(std::make_unique<ForwardPass>(frameInfo, pointLightRenderSystem));
         // Orders the passes and allocates "depth" (vkCreateImage/vkAllocateMemory/vkCreateImageView).
         graph.compile();

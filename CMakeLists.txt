@@ -81,6 +81,7 @@ file(GLOB SHADER_SOURCES
 
 set(SPIRV_BINARIES)
 foreach(SHADER ${SHADER_SOURCES})
+    message(COMPILING SHADER: ${SHADER})
     get_filename_component(SHADER_NAME ${SHADER} NAME)
     set(SPIRV ${CMAKE_SOURCE_DIR}/shaders/${SHADER_NAME}.spv)
     add_custom_command(

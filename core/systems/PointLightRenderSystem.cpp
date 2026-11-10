@@ -55,7 +55,8 @@ namespace Engine
         assert(pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout!");
 
         PipelineConfigInfo pipelineConfig{};
-        Pipeline::defaultPipelineConfigInfo(pipelineConfig, colorFormat, depthFormat);
+        std::vector<VkFormat> formats{colorFormat};
+        Pipeline::defaultPipelineConfigInfo(pipelineConfig, formats, depthFormat);
         Pipeline::enableAlphaBlending(pipelineConfig);
         // Special case
         pipelineConfig.bindingDescriptions.clear();

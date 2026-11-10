@@ -13,11 +13,16 @@ namespace Engine
         glm::mat4 normalMatrix{1.0f};
     };
 
-    SolidRenderSystem::SolidRenderSystem(Device &device, VkFormat colorFormat , VkFormat depthFormat, std::vector<VkDescriptorSetLayout> &layouts) 
-        : device{device}
+    SolidRenderSystem::SolidRenderSystem(
+        Device &device, 
+        std::vector<VkFormat> colorFormats,
+        const std::string vertexShaderPath,
+        const std::string fragmentShaderPath,
+        VkFormat depthFormat, 
+        std::vector<VkDescriptorSetLayout> &layouts) : device{device}
     {
         createPipelineLayout(layouts);
-        createPipeline(colorFormat, depthFormat);
+        createPipeline(colorFormats, depthFormat, vertexShaderPath, fragmentShaderPath);
     }
 
     SolidRenderSystem::~SolidRenderSystem()
@@ -44,18 +49,24 @@ namespace Engine
         }
     }
 
-    void SolidRenderSystem::createPipeline(VkFormat colorFormat, VkFormat depthFormat)
+    void SolidRenderSystem::createPipeline(
+        std::vector<VkFormat>& colorFormats, 
+        VkFormat depthFormat, 
+        const std::string vertexShaderPath, 
+        const std::string fragmentShaderPath
+    )
     {
         assert(pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout!");
 
         PipelineConfigInfo pipelineConfig{};
-        Pipeline::defaultPipelineConfigInfo(pipelineConfig, colorFormat, depthFormat);
+        std::vector<VkFormat> formats = colorFormats;
+        Pipeline::defaultPipelineConfigInfo(pipelineConfig, formats, depthFormat);
         pipelineConfig.pipelineLayout = pipelineLayout;
         pipeline = std::make_unique<Pipeline>(
             device, 
             pipelineConfig, 
-            "./shaders/simple_shader.vert.spv", 
-            "./shaders/simple_shader.frag.spv"
+            vertexShaderPath, 
+            fragmentShaderPath
         );
     }
 

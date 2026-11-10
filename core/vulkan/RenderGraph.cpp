@@ -1,5 +1,6 @@
 #include "RenderGraph.hpp"
 
+#include <iostream>
 #include <stdexcept>
 
 namespace
@@ -102,6 +103,18 @@ namespace Engine
         order.push_back(node);
     }
 
+    void RenderGraph::notifyResourcesAllocated()
+    {
+        auto get = [this](const std::string& name) -> const RenderResource& {
+            return resources.at(name);
+        };
+
+        for(auto& pass : renderPasses)
+        {
+            pass->onResourcesAllocated(get);
+        }
+    }
+
     void RenderGraph::allocateResources()
     {
         for (auto& [name, resource] : resources)
@@ -137,6 +150,15 @@ namespace Engine
             viewInfo.subresourceRange = {resource.aspectMask, 0, 1, 0, 1};
 
             resource.imageView = device.createImageViewWithInfo(viewInfo);
+
+            // Numeric values are the raw Vk enums/bitmasks (look them up in vulkan_core.h).
+            std::cout << "resource allocated (name=\"" << resource.name << "\""
+                      << ", imageType=" << imageInfo.imageType
+                      << ", format=" << imageInfo.format
+                      << ", usage=0x" << std::hex << imageInfo.usage << std::dec
+                      << ", layout=" << resource.currentLayout
+                      << ", extent=" << resource.extent.width << "x" << resource.extent.height
+                      << ")" << std::endl;
         }
     }
 
@@ -164,6 +186,8 @@ namespace Engine
         }
 
         allocateResources();
+
+        notifyResourcesAllocated();
     }
 
     void RenderGraph::transitionImage(VkCommandBuffer commandBuffer, RenderResource& resource, VkImageLayout newLayout)
@@ -272,6 +296,8 @@ namespace Engine
         // No semaphores between passes: they all record into one command buffer on one queue,
         // where the barriers execute() records already order them.
         allocateResources();
+
+        notifyResourcesAllocated();
     }
 
     void RenderGraph::execute(VkCommandBuffer& commandBuffer, std::unordered_map<std::string, RenderResource>& frameResources)

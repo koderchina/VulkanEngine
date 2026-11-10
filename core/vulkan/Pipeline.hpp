@@ -11,11 +11,12 @@ namespace Engine
     /**
      * @brief Plain-data bundle of all the fixed-function pipeline state structs Pipeline::createGraphicsPipeline() plugs into VkGraphicsPipelineCreateInfo.
      *
-     * Not copyable because several of its VkPipeline*CreateInfo members hold
-     * pointers into this struct's own vectors (e.g. colorBlendInfo.pAttachments
-     * points at colorBlendAttachment); copying would leave those pointers
-     * dangling or aliased. Fill one via Pipeline::defaultPipelineConfigInfo()
-     * and then override individual fields as needed.
+     * Fill one via Pipeline::defaultPipelineConfigInfo() and then override
+     * individual fields as needed. blendInfo and renderingInfo only carry the
+     * fixed fields; their attachment counts and pointers into blendAttachments /
+     * colorAttachmentFormats are filled in by Pipeline::createGraphicsPipeline(),
+     * so editing those vectors (or depthFormat) after the defaults is safe.
+     * Still not copyable, to avoid accidental copies of the vectors.
      */
     struct PipelineConfigInfo
     {
@@ -49,9 +50,21 @@ namespace Engine
          Controls how the colors are combined in the framebuffer.
          If triangles are aligned, fragment shader returns multiple color
          values for the common pixels. This pipeline stage handles that.
+         A vector can hold multiple blend state attachments to support 
+         deferred rendering.
         */
-        VkPipelineColorBlendAttachmentState     colorBlendAttachment;
-        VkPipelineColorBlendStateCreateInfo     colorBlendInfo;
+        std::vector<VkPipelineColorBlendAttachmentState>     blendAttachments{};
+        VkPipelineColorBlendStateCreateInfo blendInfo{};
+        
+        /**
+         * Deferred rendering can output multiple attachments
+         */
+        std::vector<VkFormat> colorAttachmentFormats{};
+        
+        // The depth attachment format should be its own thing since
+        // the API treats the depth attachment separately
+        VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+        
         /*
          Depth buffer attached to the frame buffer.
          It stores the depth value of the closes fragment for every pixel.
@@ -60,10 +73,10 @@ namespace Engine
 
         VkPipelineLayout                        pipelineLayout;
 
+
         /**
          * Dynamic rendering deprecates renderpasses.
          */
-        VkFormat colorAttachmentFormat{VK_FORMAT_UNDEFINED};
         VkPipelineRenderingCreateInfoKHR renderingInfo{};
 
         std::vector<VkDynamicState> dynamicStateEnables;
@@ -103,8 +116,8 @@ namespace Engine
         /// Calls vkCmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS) so subsequent draws in commandBuffer use this pipeline.
         void bind(VkCommandBuffer commandBuffer);
         /// Fills configInfo with the engine's standard fixed-function state (triangle list, no culling, depth test on, dynamic viewport/scissor, alpha blending off).
-        static void defaultPipelineConfigInfo(PipelineConfigInfo &configInfo, VkFormat colorFormat, VkFormat depthFormat);
-        /// Switches configInfo's color blend attachment to standard alpha blending (src-alpha, one-minus-src-alpha).
+        static void defaultPipelineConfigInfo(PipelineConfigInfo &configInfo, const std::vector<VkFormat>& colorFormats, VkFormat depthFormat);
+        /// Switches every entry of configInfo's blendAttachments to standard alpha blending (src-alpha, one-minus-src-alpha).
         static void enableAlphaBlending(PipelineConfigInfo &configInfo);
     private:
         /// Reads the whole file at filePath into a byte buffer (used to load compiled SPIR-V).

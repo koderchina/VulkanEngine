@@ -7,6 +7,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <iostream>
 
 namespace Engine
 {
@@ -27,7 +28,8 @@ namespace Engine
      * @brief Base class for one node of the RenderGraph.
      *
      * A subclass names the resources it samples (inputs) and renders into
-     * (outputs) through the constructor, and records its commands in record().
+     * (outputs) through the constructor, and records  
+     * its commands in record().
      * The graph uses inputs/outputs to order the passes and to record every
      * image barrier before calling record(), so record() never records barriers itself.
      */
@@ -35,6 +37,18 @@ namespace Engine
     {
     public:
         virtual ~RenderPass() = default;
+
+        /**
+         * Called by the graph after it (re)allocates its images: once at the end of compile() and again after
+         * every resizeResources(). Override it to refresh anything that holds an image view, e.g. a descriptor set.
+         * Does nothing by default.
+         * @param get Looks a resource up by name; its imageView is the newly created one.
+         *            Don't ask for "backbuffer": the swap chain image is only supplied per frame, in execute().
+         */
+        virtual void onResourcesAllocated(const std::function<const RenderResource&(const std::string&)>& get)
+        {
+            std::cout << "[" << name << "]: " << "Resources allocated..." << std::endl;
+        }
 
         RenderPass(const RenderPass &) = delete;
         RenderPass& operator=(const RenderPass &) = delete;

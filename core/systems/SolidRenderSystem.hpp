@@ -34,7 +34,9 @@ namespace Engine
          */
         SolidRenderSystem(
             Device &device,
-            VkFormat colorFormat, 
+            std::vector<VkFormat> colorFormats, 
+            const std::string vertexShaderPath,
+            const std::string fragmentShaderPath,
             VkFormat depthFormat, 
             std::vector<VkDescriptorSetLayout> &layouts
         );
@@ -50,7 +52,7 @@ namespace Engine
         /// Calls vkCreatePipelineLayout() with globalSetLayout plus a push-constant range sized for SimplePushConstantData.
         void createPipelineLayout(std::vector<VkDescriptorSetLayout> &layouts);
         /// Builds a default PipelineConfigInfo and constructs the Pipeline from the simple-shader vert/frag pair.
-        void createPipeline(VkFormat colorFormat, VkFormat depthFormat);
+        void createPipeline(std::vector<VkFormat>& colorFormat, VkFormat depthFormat, const std::string vertexShaderPath, const std::string fragmentShaderPath);
 
         Device &device;
         // This lets us create a new swap chain just by creating a new swapChain object
