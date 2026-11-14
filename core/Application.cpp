@@ -2,9 +2,11 @@
 
 #include "Camera.hpp"
 #include "systems/SolidRenderSystem.hpp"
-#include "systems/PointLightRenderSystem.hpp"
-#include "passes/ForwardPass.hpp"
+// #include "systems/PointLightRenderSystem.hpp"
+#include "systems/LightingSystem.hpp"
 #include "passes/GBufferPass.hpp"
+#include "passes/LightingPass.hpp"
+#include "passes/ForwardPass.hpp"
 #include "KeyboardController.hpp"
 #include "MouseController.hpp"
 #include "Buffer.hpp"
@@ -231,8 +233,19 @@ namespace Engine
             layoutDescriptions
         );
 
+        // Fullscreen-triangle lighting: samples albedo/normal/position, writes the backbuffer.
+        LightingSystem lightingSystem(
+            device,
+            renderer.getColorAttachmentFormat(),
+            *globalSetLayout,
+            "shaders/fullscreen.vert.spv",
+            "shaders/lighting.frag.spv"
+        );
+
         auto& graph = renderer.getGraph();
         graph.addPass(std::make_unique<GBufferPass>(frameInfo, solidRenderSystem));
+        graph.addPass(std::make_unique<LightingPass>(frameInfo, lightingSystem));
+        // Billboards last: LOAD/LOAD on backbuffer and depth, drawn over the lit image.
         graph.addPass(std::make_unique<ForwardPass>(frameInfo, pointLightRenderSystem));
         // Orders the passes and allocates "depth" (vkCreateImage/vkAllocateMemory/vkCreateImageView).
         graph.compile();
