@@ -20,7 +20,7 @@ shaders/*.spv
 *.obj
 *.a
 *.so
-
+*.md
 # Logs / captured build output
 out.txt
 *.log
